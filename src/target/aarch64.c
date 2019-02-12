@@ -1660,21 +1660,6 @@ static int aarch64_assert_reset(struct target *target)
 
 	LOG_DEBUG(" ");
 
-	/* FIXME when halt is requested, make it work somehow... */
-
-	/* Issue some kind of warm reset. */
-	if (target_has_event_action(target, TARGET_EVENT_RESET_ASSERT))
-		target_handle_event(target, TARGET_EVENT_RESET_ASSERT);
-	else if (jtag_get_reset_config() & RESET_HAS_SRST) {
-		/* REVISIT handle "pulls" cases, if there's
-		 * hardware that needs them to work.
-		 */
-		jtag_add_reset(0, 1);
-	} else {
-		LOG_ERROR("%s: how to reset?", target_name(target));
-		return ERROR_FAIL;
-	}
-
 	/* registers are now invalid */
 	if (target_was_examined(target)) {
 		register_cache_invalidate(armv8->arm.core_cache);
@@ -1692,17 +1677,14 @@ static int aarch64_deassert_reset(struct target *target)
 
 	LOG_DEBUG(" ");
 
-	/* be certain SRST is off */
-	jtag_add_reset(0, 0);
-
 	if (!target_was_examined(target))
 		return ERROR_OK;
 
-	retval = aarch64_poll(target);
+	retval = aarch64_init_debug_access(target);
 	if (retval != ERROR_OK)
 		return retval;
-
-	retval = aarch64_init_debug_access(target);
+	
+	retval = aarch64_poll(target);
 	if (retval != ERROR_OK)
 		return retval;
 
